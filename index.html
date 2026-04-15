@@ -1,59 +1,385 @@
-<div>Teachable Machine Image Model</div>
-<button type="button" onclick="init()">Start</button>
-<div id="webcam-container"></div>
-<div id="label-container"></div>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teachable Machine Image Model</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <style>
+        :root {
+            /* Paleta Escura baseada no GitHub Dark Mode */
+            --gh-bg-main: #0d1117;
+            --gh-bg-secondary: #161b22;
+            --gh-border: #30363d;
+            --gh-text-primary: #c9d1d9;
+            --gh-text-muted: #8b949e;
+            --gh-btn-bg: #238636;
+            --gh-btn-hover: #2ea043;
+            --gh-btn-border: rgba(240, 246, 252, 0.1);
+        }
+
+        body {
+            background-color: var(--gh-bg-main);
+            color: var(--gh-text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            position: relative;
+            overflow: hidden; /* Evita scroll indesejado pelo glow */
+        }
+
+        /* Container do Glow no Fundo */
+        #glow-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .glow-orb {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 120vw;
+            height: 120vh;
+            transform: translate(-50%, -50%);
+            transition: opacity 0.4s ease-out;
+            opacity: 0;
+            mix-blend-mode: screen; /* Mistura suave com o fundo escuro */
+        }
+
+        /* Design Sólido */
+        .solid-card {
+            background-color: var(--gh-bg-secondary);
+            border: 1px solid var(--gh-border);
+            border-radius: 6px;
+            padding: 2.5rem;
+            position: relative;
+            z-index: 10;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+
+        h2 {
+            color: var(--gh-text-primary);
+            font-size: 1.5rem;
+        }
+
+        .text-muted {
+            color: var(--gh-text-muted) !important;
+        }
+
+        /* Botão GitHub */
+        .btn-start {
+            background-color: var(--gh-btn-bg);
+            color: #ffffff;
+            border: 1px solid var(--gh-btn-border);
+            border-radius: 6px;
+            padding: 6px 16px;
+            font-weight: 500;
+            font-size: 14px;
+            line-height: 20px;
+            box-shadow: none;
+            transition: background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1);
+        }
+
+        .btn-start:hover {
+            background-color: var(--gh-btn-hover);
+            color: #ffffff;
+        }
+
+        /* Area da Câmera e Anéis */
+        #cam-wrapper {
+            position: relative;
+            margin: 0 auto 1.5rem auto;
+            display: none; /* Inicialmente oculto */
+            justify-content: center;
+            align-items: center;
+        }
+
+        #webcam-container canvas {
+            border-radius: 50%;
+            border: 2px solid var(--gh-border);
+            width: 200px;
+            height: 200px;
+            object-fit: cover;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        #progress-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            transform: rotate(-90deg); /* Inicia o círculo no topo */
+        }
+
+        .ring-track {
+            fill: none;
+            stroke: var(--gh-border);
+            stroke-width: 8;
+        }
+
+        .ring-progress {
+            fill: none;
+            stroke-width: 8;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.3s ease;
+        }
+
+        /* Lista de Labels */
+        .label-item {
+            background-color: var(--gh-bg-main);
+            border: 1px solid var(--gh-border);
+            border-radius: 6px;
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 10px;
+            box-shadow: 0 0 5px currentColor;
+        }
+
+        .label-text {
+            color: var(--gh-text-primary);
+            font-weight: 500;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .label-percent {
+            font-weight: bold;
+            font-family: monospace;
+            font-size: 1.1rem;
+        }
+
+        .loading-spinner {
+            display: none;
+            color: var(--gh-text-muted);
+        }
+    </style>
+</head>
+<body>
+
+<div id="glow-container"></div>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            
+            <div class="solid-card text-center">
+                <h2 class="mb-2 fw-bold">Reconhecimento de Imagem</h2>
+                <p class="text-muted mb-4">Autorize a câmera para analisar as correspondências em tempo real.</p>
+                
+                <button type="button" id="startBtn" class="btn-start mb-4" onclick="init()">
+                    <i class="bi bi-camera-video me-2"></i> Iniciar Câmera
+                </button>
+
+                <div id="loading" class="loading-spinner mb-4">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-2 fw-semibold fs-6">Carregando modelo...</p>
+                </div>
+
+                <div id="cam-wrapper">
+                    <svg id="progress-svg"></svg>
+                    <div id="webcam-container"></div>
+                </div>
+
+                <div id="label-container" class="text-start mt-4"></div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 <script type="text/javascript">
-    // More API functions here:
-    // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/image
-
-    // the link to your model provided by Teachable Machine export panel
     const URL = "https://teachablemachine.withgoogle.com/models/mzPCzLpgA/";
 
     let model, webcam, labelContainer, maxPredictions;
 
-    // Load the image model and setup the webcam
+    // Paleta de cores baseada no GitHub para as classes (Azul, Verde, Roxo, Laranja, Vermelho)
+    // Utilizamos o formato de array (R, G, B) para facilitar a criação do glow transparente
+    const classColorsRGB = [
+        '88, 166, 255',  /* Azul */
+        '63, 185, 80',   /* Verde */
+        '210, 168, 255', /* Roxo */
+        '240, 136, 62',  /* Laranja */
+        '248, 81, 73'    /* Vermelho */
+    ];
+
     async function init() {
+        const btn = document.getElementById("startBtn");
+        const loading = document.getElementById("loading");
+        
+        btn.style.display = "none";
+        loading.style.display = "block";
+
         const modelURL = URL + "model.json";
         const metadataURL = URL + "metadata.json";
 
-        // load the model and metadata
-        // Refer to tmImage.loadFromFiles() in the API to support files from a file picker
-        // or files from your local hard drive
-        // Note: the pose library adds "tmImage" object to your window (window.tmImage)
-        model = await tmImage.load(modelURL, metadataURL);
-        maxPredictions = model.getTotalClasses();
+        try {
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
 
-        // Convenience function to setup a webcam
-        const flip = true; // whether to flip the webcam
-        webcam = new tmImage.Webcam(200, 200, flip); // width, height, flip
-        await webcam.setup(); // request access to the webcam
-        await webcam.play();
-        window.requestAnimationFrame(loop);
+            const flip = true; 
+            // Inicializa a câmera com tamanho quadrado
+            webcam = new tmImage.Webcam(300, 300, flip);
+            await webcam.setup();
+            await webcam.play();
+            window.requestAnimationFrame(loop);
 
-        // append elements to the DOM
-        document.getElementById("webcam-container").appendChild(webcam.canvas);
+            loading.style.display = "none";
+            
+            setupUI();
+
+        } catch (error) {
+            alert("Erro ao acessar a câmera ou carregar o modelo. Verifique as permissões.");
+            btn.style.display = "inline-block";
+            loading.style.display = "none";
+        }
+    }
+
+    function setupUI() {
+        const camWrapper = document.getElementById("cam-wrapper");
+        const webcamContainer = document.getElementById("webcam-container");
+        const svg = document.getElementById("progress-svg");
+        const glowContainer = document.getElementById("glow-container");
         labelContainer = document.getElementById("label-container");
-        for (let i = 0; i < maxPredictions; i++) { // and class labels
-            labelContainer.appendChild(document.createElement("div"));
+
+        camWrapper.style.display = "flex";
+        webcamContainer.innerHTML = "";
+        webcamContainer.appendChild(webcam.canvas);
+        svg.innerHTML = "";
+        glowContainer.innerHTML = "";
+        labelContainer.innerHTML = "";
+
+        // Configurações dimensionais
+        const camSize = 200; // Tamanho visual da câmera
+        const ringGap = 16;  // Distância entre os anéis
+        const baseRadius = (camSize / 2) + 15; // Raio inicial
+        
+        // Calcula o tamanho total necessário para o wrapper baseado no número de anéis
+        const totalSize = camSize + 40 + (maxPredictions * ringGap * 2);
+        camWrapper.style.width = `${totalSize}px`;
+        camWrapper.style.height = `${totalSize}px`;
+
+        for (let i = 0; i < maxPredictions; i++) {
+            const rgb = classColorsRGB[i % classColorsRGB.length];
+            const solidColor = `rgb(${rgb})`;
+            const glowColor = `rgba(${rgb}, 0.2)`; // Intensidade suave do glow
+            
+            const radius = baseRadius + (i * ringGap);
+            const circumference = 2 * Math.PI * radius;
+            const center = totalSize / 2;
+
+            // 1. Criação do Fundo Glow (Orbs)
+            const orb = document.createElement("div");
+            orb.className = "glow-orb";
+            orb.id = `glow-${i}`;
+            // Cria um gradiente radial suave
+            orb.style.background = `radial-gradient(circle at center, ${glowColor} 0%, transparent 60%)`;
+            glowContainer.appendChild(orb);
+
+            // 2. Criação dos Anéis SVG
+            // Track (Fundo do anel)
+            const track = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            track.setAttribute("cx", center);
+            track.setAttribute("cy", center);
+            track.setAttribute("r", radius);
+            track.setAttribute("class", "ring-track");
+            svg.appendChild(track);
+
+            // Progress (Preenchimento do anel)
+            const progressRing = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            progressRing.setAttribute("cx", center);
+            progressRing.setAttribute("cy", center);
+            progressRing.setAttribute("r", radius);
+            progressRing.setAttribute("class", "ring-progress");
+            progressRing.setAttribute("stroke", solidColor);
+            progressRing.setAttribute("stroke-dasharray", circumference);
+            progressRing.setAttribute("stroke-dashoffset", circumference);
+            progressRing.id = `ring-${i}`;
+            progressRing.dataset.circ = circumference; // Armazena a circunferência
+            svg.appendChild(progressRing);
+
+            // 3. Criação das Labels na Lista
+            const labelItem = document.createElement("div");
+            labelItem.className = "label-item";
+            
+            labelItem.innerHTML = `
+                <div class="label-text">
+                    <span class="color-dot" style="background-color: ${solidColor}; color: ${solidColor}"></span>
+                    <span id="label-name-${i}">Classe ${i}</span>
+                </div>
+                <div class="label-percent" id="label-percent-${i}" style="color: ${solidColor}">0%</div>
+            `;
+            labelContainer.appendChild(labelItem);
         }
     }
 
     async function loop() {
-        webcam.update(); // update the webcam frame
+        webcam.update(); 
         await predict();
         window.requestAnimationFrame(loop);
     }
 
-    // run the webcam image through the image model
     async function predict() {
-        // predict can take in an image, video or canvas html element
         const prediction = await model.predict(webcam.canvas);
+        
         for (let i = 0; i < maxPredictions; i++) {
-            const classPrediction =
-                prediction[i].className + ": " + prediction[i].probability.toFixed(2);
-            labelContainer.childNodes[i].innerHTML = classPrediction;
+            const className = prediction[i].className;
+            const probability = prediction[i].probability;
+            const percent = Math.round(probability * 100);
+
+            // Atualiza o texto das labels
+            const nameEl = document.getElementById(`label-name-${i}`);
+            const percentEl = document.getElementById(`label-percent-${i}`);
+            if(nameEl) nameEl.innerText = className;
+            if(percentEl) percentEl.innerText = `${percent}%`;
+
+            // Atualiza os Anéis Circulares (SVG)
+            const ring = document.getElementById(`ring-${i}`);
+            if(ring) {
+                const circ = parseFloat(ring.dataset.circ);
+                // Calcula o offset: 100% prob = 0 offset, 0% prob = circunferência total
+                const offset = circ - (probability * circ);
+                ring.setAttribute("stroke-dashoffset", offset);
+            }
+
+            // Atualiza o Fundo Glow
+            const orb = document.getElementById(`glow-${i}`);
+            if(orb) {
+                // A opacidade do orb corresponde à probabilidade detectada
+                orb.style.opacity = probability;
+            }
         }
     }
 </script>
+</body>
+</html>
