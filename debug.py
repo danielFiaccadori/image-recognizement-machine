@@ -16,7 +16,7 @@ total_item2 = qtd2 * item2
 total_item3 = qtd3 * item3
 
 subtotal = total_item1 + total_item2 + total_item3
-imposto = subtotal * 0.10
+imposto = subtotal * 0.10  # 10% de imposto sobre vendas
 
 # DESCONTO
 desconto_cupom = float(input("Você tem um cupom de desconto? (Digite o percentual ou 0): "))
@@ -43,5 +43,5 @@ if desconto_cupom > 0:
     print(f" Desconto ({desconto_cupom:.0f}%): -R$ {desconto:.2f}")
 
 print(linha)
-print(f" TOTAL:         R$ {round(total, 2):.2f}")
+print(f" TOTAL:         R$ {round(total, 2):.2f}")  # round evita erros de ponto flutuante
 print(linha)

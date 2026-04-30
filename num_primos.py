@@ -2,7 +2,17 @@ import math
 
 
 def is_prime(n: int) -> bool:
-    """Return True if n is a prime number, False otherwise."""
+    """Verifica se um número é primo.
+
+    Um número primo é um número natural maior que 1 que não possui
+    divisores positivos além de 1 e ele mesmo.
+
+    Args:
+        n: O número inteiro a ser verificado.
+
+    Returns:
+        True se n é um número primo, False caso contrário.
+    """
     if _is_below_minimum(n):
         return False
     if _is_even(n):
